@@ -34,6 +34,35 @@ for batch in train_loader:
     pass
 ```
 
+## Where to put things inside the original MPLMM repo
+
+If you are working inside the original `MPLMM` project, place `data_adapter.py`
+at the project root (the same folder as the main MPLMM training script). A
+typical layout looks like:
+
+```
+MPLMM/
+├─ train.py              # or the script you normally run for MPLMM
+├─ model/                # existing MPLMM model code (unchanged)
+├─ utils/                # existing helpers (unchanged)
+├─ data_adapter.py       # drop this file here
+└─ ...
+```
+
+Once `data_adapter.py` is in place, the training script can import it directly:
+
+```python
+from data_adapter import load_mosi_dataset, load_mosei_dataset
+from torch.utils.data import DataLoader
+
+datasets = load_mosi_dataset()  # or load_mosei_dataset()
+train_loader = DataLoader(datasets.train, batch_size=32, shuffle=True)
+```
+
+No other MPLMM files need to move or change. The only things you need to supply
+are the pickle files themselves at the MOSI/MOSEI paths shown above (or
+override `path=` when calling the loader functions).
+
 ## How to run MPLMM with your own MOSI/MOSEI pickles
 
 The loader is designed to plug straight into the original MPLMM training code
