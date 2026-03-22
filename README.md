@@ -1,173 +1,97 @@
-# MPLMM dataset adapter
+# Complete MOSI/MOSEI adapter project
 
-This repository only contains the **dataset adaptation layer** for running the
-original MPLMM model with your own MOSI/MOSEI-style pickle files. It does **not**
-replace the original MPLMM repository. The goal is simple:
+This repository is now a **complete runnable project template** for testing
+MOSI/MOSEI-style pickle datasets with an MPLMM-style training pipeline.
 
-- keep the original model code unchanged,
-- keep the original training loop as unchanged as possible,
-- only swap the dataset-loading part.
+If you already have the original MPLMM repository, you can still copy only
+`data_adapter.py` into that project. But if you want a full set of files to run
+from directly, this repository now includes:
 
-The adapter returns each sample as a `dict` with the same keys the original
-MPLMM training code usually expects:
+```text
+.
+├─ config.py
+├─ data_adapter.py
+├─ train.py
+├─ requirements.txt
+├─ models/
+│  ├─ __init__.py
+│  └─ mplmm.py
+├─ utils/
+│  ├─ __init__.py
+│  └─ metrics.py
+└─ examples/
+   └─ train_with_adapter.py
+```
 
-- `text`
-- `text_bert`
-- `audio`
-- `vision`
-- `label`
-- `regression_label`
-- `raw_text`
-- `id`
+## What each file does
 
-## Default dataset paths
+- `train.py`: complete training entry script.
+- `config.py`: command-line arguments and typed config object.
+- `data_adapter.py`: loads your MOSI/MOSEI pickle files.
+- `models/mplmm.py`: a small MPLMM-style baseline so this repository is runnable.
+- `utils/metrics.py`: accuracy and MAE metrics.
+- `requirements.txt`: minimal dependencies.
+- `examples/train_with_adapter.py`: extra reference example.
+
+## Your dataset paths
+
+Default paths already match what you gave:
 
 - MOSI: `D:\data\dataset\CMU-MOSI\Processed\aligned_50.pkl`
 - MOSEI: `D:\data\dataset\CMU-MOSEI\aligned_50-001.pkl`
 
-If your pickle files are elsewhere, pass `path=...` when loading.
+If needed, pass `--dataset-path` to override them.
 
-## What you should put into the original MPLMM project
-
-After cloning the original MPLMM repository, place **only this file** into the
-MPLMM root directory:
-
-```text
-MPLMM/
-├─ train.py                 # original training entry script
-├─ model/                   # original model code
-├─ utils/                   # original helper code
-├─ data_adapter.py          # copy this file here
-└─ ...
-```
-
-That means:
-
-- `model/` stays unchanged.
-- original network definitions stay unchanged.
-- loss code stays unchanged.
-- optimizer code stays unchanged.
-- you only change the **data-loading section** in the training script.
-
-## The exact change you make in the original MPLMM training script
-
-Open the script you normally run in MPLMM, usually something like `train.py`,
-`main.py`, or another entry file that builds `train_loader`, `valid_loader`,
-and `test_loader`.
-
-### Step 1: add the import
-
-```python
-from pathlib import Path
-from torch.utils.data import DataLoader
-from data_adapter import load_mosi_dataset, load_mosei_dataset
-```
-
-### Step 2: replace the original dataset-loading block
-
-If the original code has something conceptually like this:
-
-```python
-# old logic in MPLMM (example only)
-# train_set, valid_set, test_set = build_dataset(args)
-# train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
-# valid_loader = DataLoader(valid_set, batch_size=args.batch_size)
-# test_loader = DataLoader(test_set, batch_size=args.batch_size)
-```
-
-replace only that part with one of the following.
-
-#### Run MOSI
-
-```python
-datasets = load_mosi_dataset()
-
-train_loader = DataLoader(datasets.train, batch_size=args.batch_size, shuffle=True)
-valid_loader = DataLoader(datasets.valid, batch_size=args.batch_size, shuffle=False)
-test_loader = DataLoader(datasets.test, batch_size=args.batch_size, shuffle=False)
-```
-
-#### Run MOSEI
-
-```python
-datasets = load_mosei_dataset()
-
-train_loader = DataLoader(datasets.train, batch_size=args.batch_size, shuffle=True)
-valid_loader = DataLoader(datasets.valid, batch_size=args.batch_size, shuffle=False)
-test_loader = DataLoader(datasets.test, batch_size=args.batch_size, shuffle=False)
-```
-
-#### If your pickle path is different
-
-```python
-datasets = load_mosi_dataset(path=Path(r"E:\\your\\path\\aligned_50.pkl"))
-# or
-# datasets = load_mosei_dataset(path=Path(r"E:\\your\\path\\aligned_50-001.pkl"))
-```
-
-### Step 3: keep the model/training logic the same
-
-Your later training code can stay in the same style. Example:
-
-```python
-for batch in train_loader:
-    logits = model(
-        text=batch["text"],
-        text_bert=batch["text_bert"],
-        audio=batch["audio"],
-        vision=batch["vision"],
-    )
-    loss = criterion(logits, batch["label"])
-    loss.backward()
-    optimizer.step()
-```
-
-If the original MPLMM training loop already uses batch fields with these names,
-you usually do not need to change anything below the loader creation lines.
-
-## Full example file you can compare against
-
-See `examples/train_with_adapter.py` for a **complete training-entry example**
-showing where the adapter fits in an MPLMM-style project.
-
-## How to run after you finish editing MPLMM
-
-Inside the original MPLMM project:
-
-### MOSI classification
+## Install
 
 ```bash
-python train.py --batch_size 32
+pip install -r requirements.txt
 ```
 
-### MOSEI classification
+## Run classification
 
-If your project already has an argument like `--dataset mosei`, keep using it,
-but make sure the loader branch points to `load_mosei_dataset()`.
+### MOSI
 
-### Regression instead of classification
-
-If your MPLMM experiment expects regression targets, change the load line to:
-
-```python
-datasets = load_mosei_dataset(label_key="regression_labels")
+```bash
+python train.py --dataset mosi --task classification --batch-size 32 --epochs 5
 ```
 
-or:
+### MOSEI
 
-```python
-datasets = load_mosi_dataset(label_key="regression_labels")
+```bash
+python train.py --dataset mosei --task classification --batch-size 32 --epochs 5
+```
+
+## Run regression
+
+### MOSI regression
+
+```bash
+python train.py --dataset mosi --task regression --batch-size 32 --epochs 5
+```
+
+### MOSEI regression
+
+```bash
+python train.py --dataset mosei --task regression --batch-size 32 --epochs 5
+```
+
+## If your pickle path is different
+
+```bash
+python train.py --dataset mosi --dataset-path "E:\\your\\aligned_50.pkl"
+python train.py --dataset mosei --dataset-path "E:\\your\\aligned_50-001.pkl"
 ```
 
 ## Expected pickle structure
 
-Each pickle file should be a dictionary with top-level splits:
+Each pickle must be a dict with top-level keys:
 
 - `train`
 - `valid`
 - `test`
 
-Each split should contain these arrays/fields:
+Each split should contain:
 
 - `text`
 - `text_bert`
@@ -178,18 +102,47 @@ Each split should contain these arrays/fields:
 - optional `raw_text`
 - optional `id`
 
-This matches the dataset summary you provided for MOSI/MOSEI.
+## Important note about the model
 
-## What this repository does not do
+The `models/mplmm.py` file in this repository is a **small runnable placeholder
+baseline**, not the original upstream MPLMM implementation.
 
-- It does not rewrite the original MPLMM model.
-- It does not bundle the original MPLMM code.
-- It does not guess the exact filename of the original repository's training
-  script if that repository is not present here.
+That is intentional because the original MPLMM source code is not included in
+this repository. If you want to use the real MPLMM model:
 
-So if you ask "which original MPLMM file should I edit?", the practical answer
-is:
+1. keep `data_adapter.py`,
+2. replace `models/mplmm.py` with the real MPLMM model code,
+3. keep `train.py`'s dataloader logic,
+4. adapt only the model import/constructor if needed.
 
-1. open the script you normally run,
-2. find where `train_loader` / `valid_loader` / `test_loader` are created,
-3. replace only that dataset-loading block with the adapter example above.
+## Minimal integration into the original MPLMM repository
+
+If you only want to modify the original MPLMM project instead of using this full
+template, do the following:
+
+1. copy `data_adapter.py` into the MPLMM root directory,
+2. open the script you normally run,
+3. find where `train_loader`, `valid_loader`, and `test_loader` are created,
+4. replace only that dataset-loading block with:
+
+```python
+from data_adapter import load_mosi_dataset, load_mosei_dataset
+from torch.utils.data import DataLoader
+
+datasets = load_mosi_dataset()  # or load_mosei_dataset()
+train_loader = DataLoader(datasets.train, batch_size=args.batch_size, shuffle=True)
+valid_loader = DataLoader(datasets.valid, batch_size=args.batch_size, shuffle=False)
+test_loader = DataLoader(datasets.test, batch_size=args.batch_size, shuffle=False)
+```
+
+The rest of the model forward/loss code can stay in the same batch-key style:
+
+```python
+for batch in train_loader:
+    logits = model(
+        text=batch["text"],
+        text_bert=batch["text_bert"],
+        audio=batch["audio"],
+        vision=batch["vision"],
+    )
+```
